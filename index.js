@@ -79,8 +79,10 @@ module.exports = function (connection) {
                 return;
             }
 
+            var resultBuilder = new ResultBuilder(success, {}, json.length);
+
             for (var i = 0; i < json.length; i++){
-                _self.insert (connection, json[i], table);
+                _self.insert (json[i], table, resultBuilder.success({}, ''));
             }
         } else {
             var sql = 'INSERT INTO %s (%s) VALUES (%s)';
@@ -118,7 +120,14 @@ module.exports = function (connection) {
                     var resultBuilder = new ResultBuilder(success, {}, objects.length);
 
                     for (var i = 0; i < objects.length; i++) {
-                        objects[i].json[table + '_id'] = results.insertId;
+                        if (Array.isArray(objects[i].json)) {
+                            for (var j = 0; j < objects[i].json.length; j++) {
+                                objects[i].json[j][table + '_id'] = results.insertId;
+                            }
+                        } else {
+                            objects[i].json[table + '_id'] = results.insertId;
+                        }
+
                         _self.insert(objects[i].json, objects[i].table, resultBuilder.success('', {}));
                     }
                 }
