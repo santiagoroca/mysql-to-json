@@ -48,8 +48,6 @@ module.exports = function (connection) {
 
         var executed = 0;
 
-        console.log ("length", wholeData.length);
-
         this.success = function (kName, parentData) {
             return function (error, data) {
                 executed ++;
@@ -66,8 +64,6 @@ module.exports = function (connection) {
                     }
                 }
 
-                console.log (dataSize == executed);
-
                 if (dataSize == executed) {
                     end ({}, wholeData);
                 }
@@ -76,8 +72,13 @@ module.exports = function (connection) {
 
     }
 
-    _self.insert = function (json, table) {
+    _self.insert = function (json, table, success) {
         if (Array.isArray(json)) {
+            if (!json.length) {
+                success();
+                return;
+            }
+
             for (var i = 0; i < json.length; i++){
                 _self.insert (connection, json[i], table);
             }
@@ -111,9 +112,15 @@ module.exports = function (connection) {
                 timeout: 40000,
                 values: []
             }, function (error, results, fields) {
-                for (var i = 0; i < objects.length; i++) {
-                    objects[i].json[table + '_id'] = results.insertId;
-                    _self.insert(objects[i].json, objects[i].table);
+                if (!objects.length) {
+                    success();
+                } else {
+                    var resultBuilder = new ResultBuilder(success, {}, objects.length);
+
+                    for (var i = 0; i < objects.length; i++) {
+                        objects[i].json[table + '_id'] = results.insertId;
+                        _self.insert(objects[i].json, objects[i].table, resultBuilder.success('', {}));
+                    }
                 }
             });
         }
@@ -143,7 +150,6 @@ module.exports = function (connection) {
                 return;
             }
 
-            console.log (rows.length * mKeys.length);
             var resultBuilder = new ResultBuilder(callback, rows, rows.length * mKeys.length);
 
             for (var i = 0; i < rows.length; i++) {
